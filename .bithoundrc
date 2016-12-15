@@ -9,6 +9,7 @@
     "src/client/themes/**",
     "src/server/node/modules/*/example.js",
     "src/server/node/modules/*/test.js",
+    "src/client/javascript/broadway.js",
     "src/server/test/**",
     "src/client/test/**",
     "src/templates/**",
