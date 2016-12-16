@@ -624,14 +624,12 @@
     0x21D4: 0x08cd,
     0x21D2: 0x08ce,
     0x2261: 0x08cf,
-    0x221A: 0x08d6,
     0x2282: 0x08da,
     0x2283: 0x08db,
     0x2229: 0x08dc,
     0x222A: 0x08dd,
     0x2227: 0x08de,
     0x2228: 0x08df,
-    0x2202: 0x08ef,
     0x0192: 0x08f6,
     0x2190: 0x08fb,
     0x2191: 0x08fc,
@@ -960,12 +958,12 @@
     0x012C: 0x100012c,
     0x01B5: 0x10001b5,
     0x01E6: 0x10001e6,
-    0x01D2: 0x10001d1,
     0x019F: 0x100019f,
     0x1E8B: 0x1001e8b,
     0x012D: 0x100012d,
     0x01B6: 0x10001b6,
     0x01E7: 0x10001e7,
+    //0x01D2: 0x10001d1,
     0x01D2: 0x10001d2,
     0x0275: 0x1000275,
     0x018F: 0x100018f,
@@ -1094,11 +1092,13 @@
     0x2087: 0x1002087,
     0x2088: 0x1002088,
     0x2089: 0x1002089,
+    //0x2202: 0x08ef,
     0x2202: 0x1002202,
     0x2205: 0x1002205,
     0x2208: 0x1002208,
     0x2209: 0x1002209,
     0x220B: 0x100220B,
+    //0x221A: 0x08d6,
     0x221A: 0x100221A,
     0x221B: 0x100221B,
     0x221C: 0x100221C,
@@ -2210,7 +2210,7 @@
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = function() {
-        inputSocket = ws;
+        //inputSocket = ws;
         cb(false);
 
         if ( connectionOptions.onSocketOpen ) {
@@ -2239,12 +2239,19 @@
       ws = null;
     },
 
-    move: function() {
-      // TODO
+    move: function(id, x, y) {
+      if ( surfaces[id] ) {
+        var surface = surfaces[id];
+        surface.x = x;
+        surface.y = y;
+        sendConfigureNotify(surface);
+      }
     },
 
-    close: function() {
-      // TODO
+    close: function(id) {
+      if ( surfaces[id] ) {
+        sendInput('W', [id]);
+      }
     },
 
     inject: function(id, type, ev, opts) {
