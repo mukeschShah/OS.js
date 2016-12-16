@@ -153,7 +153,7 @@
    * Creates a new Broadway connection
    */
   function createConnection(host, cb, cbclose) {
-    window.Broadway.connect(host, {
+    OSjs.Helpers.BroadwayConnection.connect(host, {
       onSocketOpen: function() {
         _connected = true;
         createNotification();
@@ -231,7 +231,7 @@
     _opened = false;
 
     try {
-      window.Broadway.disconnect();
+      OSjs.Helpers.BroadwayConnection.disconnect();
     } catch ( e ) {
       console.warn(e);
     }

@@ -36,10 +36,10 @@
   /////////////////////////////////////////////////////////////////////////////
 
   function BroadwayWindow(id, x, y, w, h) {
-    Window.apply(this, ['BroadwayWindow' + id, {
+    Window.apply(this, ['BroadwayWindow' + String(id), {
       width: w,
       height: h,
-      title: 'Broadway Window ' + id.toString(),
+      title: 'Broadway Window ' + String(id),
       min_width: 100,
       min_height: 100,
       allow_resize: false,
@@ -70,7 +70,7 @@
 
     function inject(type, ev) {
       var pos = getMousePos(ev);
-      return window.Broadway.inject(self._broadwayId, type, ev, {
+      return OSjs.Helpers.BroadwayConnection.inject(self._broadwayId, type, ev, {
         wx: self._position.x,
         wy: self._position.y,
         mx: parseInt(pos.x, 0),
@@ -120,7 +120,7 @@
       return false;
     }
 
-    window.Broadway.close(this._broadwayId);
+    OSjs.Helpers.BroadwayConnection.close(this._broadwayId);
 
     return true;
   };
@@ -155,7 +155,7 @@
   };
 
   BroadwayWindow.prototype._onKeyEvent = function(ev, type) {
-    window.Broadway.inject(this._broadwayId, type, ev);
+    OSjs.Helpers.BroadwayConnection.inject(this._broadwayId, type, ev);
   };
 
   BroadwayWindow.prototype._onChange = function(ev, byUser) {
@@ -164,9 +164,9 @@
     }
 
     if ( ev === 'move' ) {
-      window.Broadway.move(this._broadwayId, this._position.x, this._position.y);
+      OSjs.Helpers.BroadwayConnection.move(this._broadwayId, this._position.x, this._position.y);
     } else if ( ev === 'resize' ) {
-      window.Broadway.resize(this._broadwayId, this._dimension.w, this._dimension.h);
+      OSjs.Helpers.BroadwayConnection.resize(this._broadwayId, this._dimension.w, this._dimension.h);
     }
   };
 

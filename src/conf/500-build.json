@@ -102,6 +102,7 @@
       "src/client/javascript/vfs/mounts/onedrive.js",
       "src/client/javascript/vfs/mounts/localstorage.js",
       "src/client/javascript/helpers/broadway.js",
+      "src/client/javascript/helpers/broadway-connection.js",
       "src/client/javascript/helpers/broadway-window.js",
       "src/client/javascript/helpers/date.js",
       "src/client/javascript/helpers/event-handler.js",
