@@ -1615,6 +1615,17 @@
     return res;
   }
 
+  function getLayer(ev, id) {
+    var cid = id;
+    if ( ev.target ) {
+      var tmp = ev.target.getAttribute('data-surface-id');
+      if ( tmp ) {
+        cid = parseInt(tmp, 10);
+      }
+    }
+    return cid;
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // ACTIONS
   /////////////////////////////////////////////////////////////////////////////
@@ -1966,9 +1977,9 @@
       doUngrab();
     }
 
-    console.debug('Broadway', 'onDeleteSurface()', id);
     if ( surface ) {
-      if ( surface.canvas ) {
+      console.debug('Broadway', 'onDeleteSurface()', id);
+      if ( surface.canvas && surface.positioned ) {
         if ( surface.canvas.parentNode ) {
           surface.canvas.parentNode.removeChild(surface.canvas);
         }
@@ -2210,7 +2221,7 @@
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = function() {
-        //inputSocket = ws;
+        inputSocket = ws;
         cb(false);
 
         if ( connectionOptions.onSocketOpen ) {
@@ -2268,11 +2279,13 @@
 
       var surface = surfaces[id];
       if ( surface ) {
+        var cid = getLayer(ev, id);
+
         switch (type) {
           case 'mousewheel':
             var offset = ev.detail ? ev.detail : -ev.wheelDelta;
             var dir = offset > 0 ? 1 : 0;
-            sendInput('s', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, dir]);
+            sendInput('s', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, dir]);
             break;
 
           case 'mousedown':
@@ -2284,7 +2297,7 @@
               doGrab(id, false, true);
             }
 
-            sendInput('b', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+            sendInput('b', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
             break;
 
           case 'mouseup':
@@ -2292,7 +2305,7 @@
             var button = ev.button + 1;
             lastState = lastState & ~getButtonMask (button);
 
-            sendInput('B', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+            sendInput('B', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
 
             if ( grab.window !== null && grab.implicit ) {
               doUngrab();
@@ -2307,14 +2320,14 @@
             windowWithMouse = id;
 
             if ( windowWithMouse !== 0 ) {
-              sendInput('e', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+              sendInput('e', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
             }
             break;
 
           case 'mouseout':
             updateForEvent(ev);
             if ( id !== 0 ) {
-              sendInput('l', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+              sendInput('l', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
             }
 
             realWindowWithMouse = 0;
@@ -2323,7 +2336,7 @@
 
           case 'mousemove':
             updateForEvent(ev);
-            sendInput('m', [realWindowWithMouse, id, ev.pageX, ev.pageY, opts.mx, opts.my, lastState]);
+            sendInput('m', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState]);
             break;
 
           case 'keydown':
