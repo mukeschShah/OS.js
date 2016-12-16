@@ -81,7 +81,7 @@ function generateClientConfiguration(target, cli, cfg) {
     if ( cfg.broadway.enabled ) {
       preloads.push({
         'type': 'javascript',
-        'src': '/vendor/zlib.js'
+        'src': '/vendor/broadway.lib.js'
       });
       preloads.push({
         'type': 'javascript',
