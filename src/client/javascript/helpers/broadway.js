@@ -153,7 +153,7 @@
    * Creates a new Broadway connection
    */
   function createConnection(host, cb, cbclose) {
-    window.GTK.connect(host, {
+    window.Broadway.connect(host, {
       onSocketOpen: function() {
         _connected = true;
         createNotification();
@@ -174,11 +174,13 @@
         });
       },
 
+      /*
       onFlushSurface: function(id, q) {
         return actionOnWindow(id, function(win) {
           return win._canvas;
         });
       },
+      */
 
       onDeleteSurface: function(id) {
         return actionOnWindow(id, function(win) {
@@ -229,7 +231,7 @@
     _opened = false;
 
     try {
-      window.GTK.disconnect();
+      window.Broadway.disconnect();
     } catch ( e ) {
       console.warn(e);
     }

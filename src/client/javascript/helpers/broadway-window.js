@@ -37,8 +37,8 @@
 
   function BroadwayWindow(id, x, y, w, h) {
     Window.apply(this, ['BroadwayWindow' + id, {
-      w: w,
-      h: h,
+      width: w,
+      height: h,
       title: 'Broadway Window ' + id.toString(),
       min_width: 100,
       min_height: 100,
@@ -70,7 +70,7 @@
 
     function inject(type, ev) {
       var pos = getMousePos(ev);
-      return window.GTK.inject(self._broadwayId, type, ev, {
+      return window.Broadway.inject(self._broadwayId, type, ev, {
         wx: self._position.x,
         wy: self._position.y,
         mx: parseInt(pos.x, 0),
@@ -120,7 +120,7 @@
       return false;
     }
 
-    window.GTK.close(this._broadwayId);
+    window.Broadway.close(this._broadwayId);
 
     return true;
   };
@@ -155,7 +155,7 @@
   };
 
   BroadwayWindow.prototype._onKeyEvent = function(ev, type) {
-    window.GTK.inject(this._broadwayId, type, ev);
+    window.Broadway.inject(this._broadwayId, type, ev);
   };
 
   BroadwayWindow.prototype._onChange = function(ev, byUser) {
@@ -164,9 +164,9 @@
     }
 
     if ( ev === 'move' ) {
-      window.GTK.move(this._broadwayId, this._position.x, this._position.y);
+      window.Broadway.move(this._broadwayId, this._position.x, this._position.y);
     } else if ( ev === 'resize' ) {
-      window.GTK.resize(this._broadwayId, this._dimension.w, this._dimension.h);
+      window.Broadway.resize(this._broadwayId, this._dimension.w, this._dimension.h);
     }
   };
 

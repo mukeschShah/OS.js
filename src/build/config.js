@@ -77,10 +77,15 @@ function generateClientConfiguration(target, cli, cfg) {
 
     settings.Connection.WSPort = cfg.server.http.ws.port;
     settings.Broadway = cfg.broadway;
+
     if ( cfg.broadway.enabled ) {
       preloads.push({
         'type': 'javascript',
-        'src': (target === 'dist' ? '' : '/client/javascript') + '/broadway.js'
+        'src': '/vendor/zlib.js'
+      });
+      preloads.push({
+        'type': 'javascript',
+        'src': '/vendor/broadway.js'
       });
     }
 
