@@ -609,12 +609,14 @@
   function cmdMoveResizeSurface(id, has_pos, x, y, has_size, w, h) {
     var surface = surfaces[id];
 
-    console.debug('Broadway', 'onMoveResizeSurface()', id, arguments);
+    console.debug('Broadway', 'onMoveResizeSurface()', [id, has_pos, has_size], [x, y], [w, h], surface);
+
     if ( has_pos ) {
       surface.positioned = true;
       surface.x = x;
       surface.y = y;
     }
+
     if ( has_size ) {
       surface.width = w;
       surface.height = h;
@@ -624,17 +626,17 @@
       resizeCanvas(surface.canvas, w, h);
     }
 
-    if ( surface.visible ) {
-      if ( surface.isTemp ) {
-        if ( has_pos ) {
-          var xOffset = surface.x;
-          var yOffset = surface.y;
+    if ( surface.isTemp ) {
+      if ( has_pos ) {
+        var parentSurface = surfaces[surface.transientParent];
+        var xOffset = surface.x - parentSurface.x;
+        var yOffset = surface.y - parentSurface.y;
 
-          var element = surface.canvas;
-          element.style.left = xOffset + 'px';
-          element.style.top = yOffset + 'px';
-        }
-      } else {
+        surface.canvas.style.left = xOffset + 'px';
+        surface.canvas.style.top = yOffset + 'px';
+      }
+    } else {
+      if ( surface.visible ) {
         OSjs.Broadway.Events.onMoveSurface(id, has_pos, has_size, surface);
       }
     }
@@ -665,17 +667,10 @@
         return;
       }
 
-      console.debug('Broadway', 'onSetTransient()', id, parentId, surface);
-
       surface.transientParent = parentId;
-
       var parentSurface = surfaces[parentId];
       if ( surface.positioned ) {
-        console.warn();
-        var pos = Utils.$position(parentSurface.canvas);
-        surface.canvas.style.marginTop = -(pos.top) + 'px';
-        surface.canvas.style.marginLeft = -(pos.left) + 'px';
-
+        console.debug('Broadway', 'onSetTransient()', id, parentId, surface);
         parentSurface.canvas.parentNode.appendChild(surface.canvas);
       }
     }
@@ -1087,8 +1082,8 @@
       var surface = surfaces[id];
       if ( surface ) {
         var cid = getLayer(ev, id);
-        var relx = surface.x + opts.mx;
-        var rely = surface.y + opts.my;
+        var relx = opts ? surface.x + opts.mx : -1;
+        var rely = opts ? surface.y + opts.my : -1;
 
         if ( Input[type] ) {
           Input[type](id, cid, type, ev, opts, relx, rely);
