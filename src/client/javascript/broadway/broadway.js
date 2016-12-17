@@ -632,6 +632,9 @@
         var xOffset = surface.x - parentSurface.x;
         var yOffset = surface.y - parentSurface.y;
 
+        surface.xOff = xOffset;
+        surface.yOff = yOffset;
+
         surface.canvas.style.left = xOffset + 'px';
         surface.canvas.style.top = yOffset + 'px';
       }
@@ -706,6 +709,8 @@
   function cmdCreateSurface(id, x, y, width, height, isTemp) {
     var surface = {
       id: id,
+      xOff: 0,
+      yOff: 0,
       x: x,
       y: y,
       width: width,
@@ -826,52 +831,46 @@
   /////////////////////////////////////////////////////////////////////////////
 
   var Input = {
-    mousewheel: function(id, cid, type, ev, opts, relx, rely) {
+    mousewheel: function(id, cid, ev, relx, rely, mx, my) {
       var offset = ev.detail ? ev.detail : -ev.wheelDelta;
       var dir = offset > 0 ? 1 : 0;
-      sendInput('s', [id, cid, relx, rely, opts.mx, opts.my, lastState, dir]);
+      sendInput('s', [id, cid, relx, rely, mx, my, lastState, dir]);
     },
 
-    mousedown: function(id, cid, type, ev, opts, relx, rely) {
+    mousedown: function(id, cid, ev, relx, rely, mx, my) {
       updateForEvent(ev);
       var button = ev.button + 1;
       lastState = lastState | getButtonMask(button);
-
-      console.debug('Broadway', 'mousedown', [relx, rely], [opts.mx, opts.my]);
-
-      sendInput('b', [id, cid, relx, rely, opts.mx, opts.my, lastState, button]);
+      sendInput('b', [id, cid, relx, rely, mx, my, lastState, button]);
     },
 
-    mouseup: function(id, cid, type, ev, opts, relx, rely) {
+    mouseup: function(id, cid, ev, relx, rely, mx, my) {
       updateForEvent(ev);
       var button = ev.button + 1;
       lastState = lastState & ~getButtonMask (button);
-
-      sendInput('B', [id, cid, relx, rely, opts.mx, opts.my, lastState, button]);
+      sendInput('B', [id, cid, relx, rely, mx, my, lastState, button]);
     },
 
-    mouseover: function(id, cid, type, ev, opts, relx, rely) {
+    mouseover: function(id, cid, ev, relx, rely, mx, my) {
       updateForEvent(ev);
-
       if ( id !== 0 ) {
-        sendInput('e', [id, cid, relx, rely, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+        sendInput('e', [id, cid, relx, rely, mx, my, lastState, GDK_CROSSING_NORMAL]);
       }
     },
 
-    mouseout: function(id, cid, type, ev, opts, relx, rely) {
+    mouseout: function(id, cid, ev, relx, rely, mx, my) {
       updateForEvent(ev);
       if ( id !== 0 ) {
-        sendInput('l', [id, cid, relx, rely, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+        sendInput('l', [id, cid, relx, rely, mx, my, lastState, GDK_CROSSING_NORMAL]);
       }
     },
 
-    mousemove: function(id, cid, type, ev, opts, relx, rely) {
+    mousemove: function(id, cid, ev, relx, rely, mx, my) {
       updateForEvent(ev);
-
-      sendInput('m', [id, cid, relx, rely, opts.mx, opts.my, lastState]);
+      sendInput('m', [id, cid, relx, rely, mx, my, lastState]);
     },
 
-    keydown: function(id, cid, type, ev, opts) {
+    keydown: function(id, cid, ev) {
       updateForEvent(ev);
 
       var fev = copyKeyEvent(ev || window.event);
@@ -895,7 +894,7 @@
       }
     },
 
-    keypress: function(id, cid, type, ev, opts) {
+    keypress: function(id, cid, ev) {
       var kdlen = keyDownList.length
 
       if (((typeof ev.which !== 'undefined') && (ev.which === 0)) || getKeysymSpecial(ev)) {
@@ -926,7 +925,7 @@
       cancelEvent(ev);
     },
 
-    keyup: function(id, cid, type, ev, opts) {
+    keyup: function(id, cid, ev) {
       var fev = getKeyEvent(ev.keyCode, true);
       var keysym = fev ? fev.keysym : 0;
       if ( keysym > 0 ) {
@@ -1082,11 +1081,23 @@
       var surface = surfaces[id];
       if ( surface ) {
         var cid = getLayer(ev, id);
-        var relx = opts ? surface.x + opts.mx : -1;
-        var rely = opts ? surface.y + opts.my : -1;
+        var relx = -1;
+        var rely = -1;
+        var mx = -1;
+        var my = -1;
+
+        if ( opts ) {
+          var tsurface = surfaces[cid] || surface;
+
+          mx = opts.mx - tsurface.xOff;
+          my = opts.my - tsurface.yOff;
+
+          relx = tsurface.x + mx;
+          rely = tsurface.y + my;
+        }
 
         if ( Input[type] ) {
-          Input[type](id, cid, type, ev, opts, relx, rely);
+          Input[type](id, cid, ev, relx, rely, mx, my);
         }
       }
     }

@@ -84,9 +84,13 @@
     this._canvas.height = this._dimension.h;
 
     function getMousePos(ev) {
+      var wm = OSjs.Core.getWindowManager();
+      var theme = wm ? wm.getStyleTheme(true) : null;
+      var topMargin = theme ? (theme.style.window.margin) : 26;
+
       return {
         x:ev.pageX - self._position.x,
-        y:ev.pageY - self._position.y - 26 // FIXME
+        y:ev.pageY - self._position.y - topMargin
       };
     }
 
