@@ -455,6 +455,10 @@
       OSjs.API.addHook('onLogout', function() {
         OSjs.Broadway.Connection.disconnect();
       });
+
+      OSjs.API.addHook('onBlurMenu', function() {
+        OSjs.Broadway.GTK.inject(null, 'blur');
+      });
     }
 
     var exts = Object.keys(OSjs.Extensions);

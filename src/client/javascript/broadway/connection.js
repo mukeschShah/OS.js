@@ -167,6 +167,24 @@
     };
   }
 
+  var onResize = (function() {
+    var wm;
+    return function() {
+      if ( !wm ) {
+        wm = OSjs.Core.getWindowManager();
+      }
+
+      if ( wm ) {
+        var space = wm.getWindowSpace();
+        OSjs.Broadway.GTK.inject(null, 'resize', null, {
+          width: space.width,
+          height: space.height
+        });
+      }
+
+    };
+  })();
+
   /////////////////////////////////////////////////////////////////////////////
   // API
   /////////////////////////////////////////////////////////////////////////////
@@ -269,10 +287,15 @@
 
   OSjs.Broadway.Events = {
     onSocketOpen: function() {
+      window.addEventListener('resize', onResize);
+
       updateNotification();
+      onResize();
     },
 
     onSocketClose: function() {
+      window.removeEventListener('resize', onResize);
+
       disconnect();
     },
 
@@ -296,18 +319,20 @@
 
     onMoveSurface: function(id, has_pos, has_size, surface) {
       return actionOnWindow(id, function(win) {
-        //if ( has_pos ) {
-        //  win._move(x, y);
-        //}
+        var wm = OSjs.Core.getWindowManager();
+        var space = wm.getWindowSpace();
+        if ( has_pos ) {
+          win._move(space.left + surface.x, space.top + surface.y);
+        }
         if ( has_size ) {
           win._resize(surface.width, surface.height);
         }
       });
     },
 
-    onCreateSurface: function(id, surface, isTemp) {
+    onCreateSurface: function(id, surface) {
       var wm = OSjs.Core.getWindowManager();
-      if ( !isTemp ) {
+      if ( !surface.isTemp ) {
         var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height, surface.canvas);
         wm.addWindow(win, true);
       }

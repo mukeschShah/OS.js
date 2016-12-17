@@ -715,12 +715,12 @@
       y: y,
       width: width,
       height: height,
+      isTemp: isTemp,
       positioned: isTemp,
       transientParent: 0,
       visible: false,
       imageData: null,
-      canvas: document.createElement('canvas'),
-      isTemp: isTemp
+      canvas: document.createElement('canvas')
     };
 
     console.debug('Broadway', 'onCreateSurface()', surface);
@@ -737,7 +737,7 @@
       surface.canvas.style.display = 'none';
     }
 
-    OSjs.Broadway.Events.onCreateSurface(id, surface, isTemp);
+    OSjs.Broadway.Events.onCreateSurface(id, surface);
 
     surfaces[id] = surface;
     sendConfigureNotify(surface);
@@ -1051,6 +1051,19 @@
     },
 
     /**
+     * Sends a raw input
+     *
+     * @param {String}    cmd     Command name
+     * @param {Array}     args    Command arguments
+     *
+     * @function close
+     * @memberof OSjs.Broadway.GTK
+     */
+    send: function(cmd, args) {
+      sendInput(cmd, args);
+    },
+
+    /**
      * Injects an event into Broadway Window
      *
      * @param {Number}  id      Window ID
@@ -1063,9 +1076,10 @@
      */
     inject: function(id, type, ev, opts) {
       if ( type === 'resize' ) {
-        var w = window.innerWidth;
-        var h = window.innerHeight;
-        sendInput('d', [w, h]);
+        sendInput('d', [opts.width, opts.height]);
+        return;
+      } else if ( type === 'blur' ) {
+        // TODO: Find some way to hide open menus etc
         return;
       }
 
