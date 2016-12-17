@@ -28,16 +28,15 @@
  * @licence Simplified BSD License
  */
 
-(function(Application, Window, Utils, VFS, GUI) {
+(function(Application, Window, Utils, VFS, GUI, API) {
   'use strict';
 
   /**
    * @namespace Broadway
-   * @memberof OSjs.Helpers
+   * @memberof OSjs.Core
    */
 
   var _connected = false;
-  var _opened = false;
   var _ws = null;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -85,8 +84,8 @@
     if ( wm ) {
       var n = wm.getNotificationIcon('BroadwayService');
       if ( n ) {
-        var icon = _opened || _connected ? 'network-transmit' : 'network-offline';
-        var image = OSjs.API.getIcon('status/' + icon + '.png');
+        var icon = _connected ? 'network-transmit' : 'network-offline';
+        var image = API.getIcon('status/' + icon + '.png');
         n.setIcon(image);
       }
     }
@@ -97,7 +96,7 @@
    */
   function createNotification() {
     var wm = OSjs.Core.getWindowManager();
-    var conf = OSjs.API.getConfig('Broadway');
+    var conf = API.getConfig('Broadway');
 
     function displayMenu(ev) {
       var menuItems = [];
@@ -105,15 +104,15 @@
         menuItems.push({
           title: 'Disconnect from Broadway server',
           onClick: function() {
-            OSjs.Helpers.Broadway.disconnect();
+            OSjs.Broadway.Connection.disconnect();
           }
         });
         menuItems.push({
           title: 'Create new process',
           onClick: function() {
-            OSjs.API.createDialog('Input', {}, function(ev, btn, value) {
+            API.createDialog('Input', {}, function(ev, btn, value) {
               if ( btn === 'ok' && value ) {
-                OSjs.Helpers.Broadway.spawn(value);
+                OSjs.Broadway.Connection.spawn(value);
               }
             })
           }
@@ -122,12 +121,12 @@
         menuItems.push({
           title: 'Connect to Broadway server',
           onClick: function() {
-            OSjs.Helpers.Broadway.connect();
+            OSjs.Broadway.Connection.connect();
           }
         });
       }
 
-      OSjs.API.createMenu(menuItems, ev);
+      API.createMenu(menuItems, ev);
     }
 
     removeNotification();
@@ -136,7 +135,7 @@
       removeNotification();
 
       wm.createNotificationIcon('BroadwayService', {
-        image: OSjs.API.getIcon('status/network-offline.png'),
+        image: API.getIcon('status/network-offline.png'),
         onContextMenu: function(ev) {
           displayMenu(ev);
           return false;
@@ -153,16 +152,9 @@
    * Creates a new Broadway connection
    */
   function createConnection(host, cb, cbclose) {
-    OSjs.Helpers.BroadwayConnection.connect(host, {
-      onSocketOpen: function() {
-        _connected = true;
-        createNotification();
-      },
-
-      onSocketClose: function() {
-        _connected = false;
-        createNotification();
-      },
+    OSjs.Broadway.GTK.connect(host, {
+      onSocketOpen: cb,
+      onSocketClose: cbclose,
 
       onSetTransient: function(id, parentId, surface) {
         return actionOnWindow(parentId, function(win) {
@@ -213,32 +205,12 @@
 
       onCreateSurface: function(id, surface) {
         var wm = OSjs.Core.getWindowManager();
-        var win = new OSjs.Helpers.BroadwayWindow(id, surface.x, surface.y, surface.width, surface.height);
+        var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height);
         wm.addWindow(win);
         return win._canvas;
       }
 
     }, cb, cbclose);
-  }
-
-  /*
-   * Destroys Broadway connection
-   */
-  function destroyConnection() {
-    if ( !_opened ) {
-      return;
-    }
-    _opened = false;
-
-    try {
-      OSjs.Helpers.BroadwayConnection.disconnect();
-    } catch ( e ) {
-      console.warn(e);
-    }
-
-    setTimeout(function() {
-      updateNotification();
-    }, 100);
   }
 
   /*
@@ -256,108 +228,112 @@
     };
 
     _ws.onclose = function() {
-      destroyConnection();
+      OSjs.Broadway.Connection.disconnect();
     };
-  }
-
-  /*
-   * Destroys Spawner connection
-   */
-  function destroySpawner() {
-    if ( _ws ) {
-      _ws.close();
-    }
-    _ws = null;
-
-    setTimeout(function() {
-      updateNotification();
-    }, 100);
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // API
   /////////////////////////////////////////////////////////////////////////////
 
-  var Broadway = {
-    /**
-     * Creates a new Broadway connection
-     *
-     * @function connect
-     * @memberof OSjs.Helpers.Broadway
-     */
-    connect: function() {
-      if ( _connected || _ws ) {
-        return;
-      }
+  /**
+   * Disconnects the Broadway connections
+   *
+   * @function disconnect
+   * @memberof OSjs.Broadway.Connection
+   */
+  function disconnect() {
+    _connected = false;
 
-      var conf = OSjs.API.getConfig('Broadway');
-
-      createSpawner(createURL(conf.defaults.spawner), function(err) {
-        if ( err ) {
-          console.error(err);
-        } else {
-          try {
-            createConnection(createURL(conf.defaults.connection), function() {
-              _opened = true;
-
-              updateNotification();
-            }, function() {
-              destroySpawner();
-              destroyConnection();
-            });
-          } catch ( e ) {
-            console.warn(e);
-          }
-        }
-      });
-    },
-
-    /**
-     * Disconnects the Broadway connection
-     *
-     * @function disconnect
-     * @memberof OSjs.Helpers.Broadway
-     */
-    disconnect: function() {
-      destroyConnection();
-    },
-
-    /**
-     * Spawns a new process on the Broadway server
-     *
-     * @param {String}  cmd     Command
-     *
-     * @function spawn
-     * @memberof OSjs.Helpers.Broadway
-     */
-    spawn: function(cmd) {
-      if ( !_connected || !_ws ) {
-        return;
-      }
-
-      _ws.send(JSON.stringify({
-        method: 'launch',
-        argument: cmd
-      }));
+    if ( _ws ) {
+      _ws.close();
     }
+    _ws = null;
+
+    try {
+      OSjs.Broadway.GTK.disconnect();
+    } catch ( e ) {
+      console.warn(e);
+    }
+
+    setTimeout(function() {
+      updateNotification();
+    }, 100);
+  };
+
+  /**
+   * Creates new Broadway connections
+   *
+   * @function connect
+   * @memberof OSjs.Broadway.Connection
+   */
+  function connect() {
+    if ( _connected || _ws ) {
+      return;
+    }
+
+    var conf = API.getConfig('Broadway');
+
+    createSpawner(createURL(conf.defaults.spawner), function(err) {
+      _connected = true;
+
+      if ( err ) {
+        console.error(err);
+      } else {
+        try {
+          createConnection(createURL(conf.defaults.connection), function() {
+            updateNotification();
+          }, function() {
+            disconnect();
+          });
+        } catch ( e ) {
+          console.warn(e);
+        }
+      }
+    });
+  };
+
+  /**
+   * Spawns a new process on the Broadway server
+   *
+   * @param {String}  cmd     Command
+   *
+   * @function spawn
+   * @memberof OSjs.Broadway.Connection
+   */
+  function spawn(cmd) {
+    if ( !_connected || !_ws ) {
+      return;
+    }
+
+    _ws.send(JSON.stringify({
+      method: 'launch',
+      argument: cmd
+    }));
   };
 
   /////////////////////////////////////////////////////////////////////////////
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  if ( OSjs.API.getConfig('Broadway.enabled') ) {
-    OSjs.API.addHook('onSessionLoaded', function() {
+  if ( API.getConfig('Broadway.enabled') ) {
+    API.addHook('onSessionLoaded', function() {
       createNotification();
     });
 
-    OSjs.API.addHook('onLogout', function() {
-      removeNotification();
-      destroySpawner();
-      destroyConnection();
+    API.addHook('onLogout', function() {
+      OSjs.Broadway.Connection.disconnect();
     });
   }
 
-  OSjs.Helpers.Broadway = Broadway;
+  /**
+   * @namespace Connection
+   * @memberof OSjs.Core.Broadway
+   */
+  OSjs.Broadway.Connection = {
+    connect: connect,
+    disconnect: disconnect,
+    spawn: spawn
+  };
 
-})(OSjs.Core.Application, OSjs.Core.Window, OSjs.Utils, OSjs.VFS, OSjs.GUI);
+})(OSjs.Core.Application, OSjs.Core.Window, OSjs.Utils, OSjs.VFS, OSjs.GUI, OSjs.API);

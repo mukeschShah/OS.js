@@ -28,13 +28,32 @@
  * @licence Simplified BSD License
  */
 
-(function(Application, Window, Utils, VFS, GUI) {
+(function(Application, Window, Utils, VFS, GUI, API) {
   'use strict';
+
+  /**
+   * @namespace Broadway
+   * @memberof OSjs.Core
+   */
 
   /////////////////////////////////////////////////////////////////////////////
   // API
   /////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Broadway Window
+   *
+   * @param {Number}  id      Window ID
+   * @param {Number}  x       X Position
+   * @param {Number}  y       Y Position
+   * @param {Number}  w       Width
+   * @param {Number}  h       Height
+   *
+   * @abstract
+   * @constructor
+   * @memberof OSjs.Broadway
+   * @extends OSjs.Core.Window
+   */
   function BroadwayWindow(id, x, y, w, h) {
     Window.apply(this, ['BroadwayWindow' + String(id), {
       width: w,
@@ -70,7 +89,7 @@
 
     function inject(type, ev) {
       var pos = getMousePos(ev);
-      return OSjs.Helpers.BroadwayConnection.inject(self._broadwayId, type, ev, {
+      return OSjs.Broadway.GTK.inject(self._broadwayId, type, ev, {
         wx: self._position.x,
         wy: self._position.y,
         mx: parseInt(pos.x, 0),
@@ -120,7 +139,7 @@
       return false;
     }
 
-    OSjs.Helpers.BroadwayConnection.close(this._broadwayId);
+    OSjs.Broadway.GTK.close(this._broadwayId);
 
     return true;
   };
@@ -155,7 +174,7 @@
   };
 
   BroadwayWindow.prototype._onKeyEvent = function(ev, type) {
-    OSjs.Helpers.BroadwayConnection.inject(this._broadwayId, type, ev);
+    OSjs.Broadway.GTK.inject(this._broadwayId, type, ev);
   };
 
   BroadwayWindow.prototype._onChange = function(ev, byUser) {
@@ -164,9 +183,9 @@
     }
 
     if ( ev === 'move' ) {
-      OSjs.Helpers.BroadwayConnection.move(this._broadwayId, this._position.x, this._position.y);
+      OSjs.Broadway.GTK.move(this._broadwayId, this._position.x, this._position.y);
     } else if ( ev === 'resize' ) {
-      OSjs.Helpers.BroadwayConnection.resize(this._broadwayId, this._dimension.w, this._dimension.h);
+      OSjs.Broadway.GTK.resize(this._broadwayId, this._dimension.w, this._dimension.h);
     }
   };
 
@@ -174,7 +193,6 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Helpers.BroadwayWindow = BroadwayWindow;
+  OSjs.Broadway.Window = BroadwayWindow;
 
-})(OSjs.Core.Application, OSjs.Core.Window, OSjs.Utils, OSjs.VFS, OSjs.GUI);
-
+})(OSjs.Core.Application, OSjs.Core.Window, OSjs.Utils, OSjs.VFS, OSjs.GUI, OSjs.API);
