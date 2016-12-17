@@ -66,6 +66,7 @@
       allow_minimize: false,
       allow_maximize: false,
       allow_session: false,
+      //allow_close: false,
       key_capture: true // IMPORTANT
     }]);
 

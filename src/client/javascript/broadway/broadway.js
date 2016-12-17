@@ -831,48 +831,49 @@
   /////////////////////////////////////////////////////////////////////////////
 
   var Input = {
-    mousewheel: function(id, cid, type, ev, opts) {
+    mousewheel: function(id, cid, type, ev, opts, relx, rely) {
       var offset = ev.detail ? ev.detail : -ev.wheelDelta;
       var dir = offset > 0 ? 1 : 0;
-      sendInput('s', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, dir]);
+      sendInput('s', [id, cid, relx, rely, opts.mx, opts.my, lastState, dir]);
     },
 
-    mousedown: function(id, cid, type, ev, opts) {
+    mousedown: function(id, cid, type, ev, opts, relx, rely) {
       updateForEvent(ev);
       var button = ev.button + 1;
       lastState = lastState | getButtonMask(button);
 
-      console.debug('Broadway', 'inject()', arguments);
+      console.debug('Broadway', 'mousedown', [relx, rely], [opts.mx, opts.my]);
 
-      sendInput('b', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+      sendInput('b', [id, cid, relx, rely, opts.mx, opts.my, lastState, button]);
     },
 
-    mouseup: function(id, cid, type, ev, opts) {
+    mouseup: function(id, cid, type, ev, opts, relx, rely) {
       updateForEvent(ev);
       var button = ev.button + 1;
       lastState = lastState & ~getButtonMask (button);
 
-      sendInput('B', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+      sendInput('B', [id, cid, relx, rely, opts.mx, opts.my, lastState, button]);
     },
 
-    mouseover: function(id, cid, type, ev, opts) {
+    mouseover: function(id, cid, type, ev, opts, relx, rely) {
       updateForEvent(ev);
 
       if ( id !== 0 ) {
-        sendInput('e', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+        sendInput('e', [id, cid, relx, rely, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
       }
     },
 
-    mouseout: function(id, cid, type, ev, opts) {
+    mouseout: function(id, cid, type, ev, opts, relx, rely) {
       updateForEvent(ev);
       if ( id !== 0 ) {
-        sendInput('l', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+        sendInput('l', [id, cid, relx, rely, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
       }
     },
 
-    mousemove: function(id, cid, type, ev, opts) {
+    mousemove: function(id, cid, type, ev, opts, relx, rely) {
       updateForEvent(ev);
-      sendInput('m', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState]);
+
+      sendInput('m', [id, cid, relx, rely, opts.mx, opts.my, lastState]);
     },
 
     keydown: function(id, cid, type, ev, opts) {
@@ -1086,8 +1087,11 @@
       var surface = surfaces[id];
       if ( surface ) {
         var cid = getLayer(ev, id);
+        var relx = surface.x + opts.mx;
+        var rely = surface.y + opts.my;
+
         if ( Input[type] ) {
-          Input[type](id, cid, type, ev, opts);
+          Input[type](id, cid, type, ev, opts, relx, rely);
         }
       }
     }
