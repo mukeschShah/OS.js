@@ -111,7 +111,7 @@
         menuItems.push({
           title: 'Create new process',
           onClick: function() {
-            API.createDialog('Input', {}, function(ev, btn, value) {
+            API.createDialog('Input', {message: 'Launch process', value: '/usr/bin/gtk3-demo'}, function(ev, btn, value) {
               if ( btn === 'ok' && value ) {
                 OSjs.Broadway.Connection.spawn(value);
               }
@@ -253,7 +253,7 @@
       _connected = true;
 
       if ( err ) {
-        console.error(err);
+        API.error('Broadway', 'Failed to connect', err)
       } else {
         try {
           var host = createURL(conf.defaults.connection);

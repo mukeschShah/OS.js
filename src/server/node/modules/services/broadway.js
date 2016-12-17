@@ -68,6 +68,9 @@ module.exports.register = function(env, config, servers) {
       env[k] = defaults.env[k];
     });
 
+    _spawn(cmd, args, {env: env});
+
+    /*
     const ls = _spawn(cmd, args, {env: env});
 
     ls.stdout.on('data', function(data) {
@@ -85,6 +88,7 @@ module.exports.register = function(env, config, servers) {
     ls.on('close', function(code) {
       console.log('child process exited with code ' + code);
     });
+    */
   }
 
   const port = defaults.spawner.port;
@@ -99,8 +103,6 @@ module.exports.register = function(env, config, servers) {
     logger.log('INFO', 'Incoming broadway connection');
 
     ws.on('message', function(message) {
-      console.log('received: %s', message);
-
       const json = JSON.parse(message);
       if ( json.method === 'launch' ) {
         spawnBroadwayProcess(json.argument);
