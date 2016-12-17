@@ -33,7 +33,7 @@
 
   /**
    * @namespace Broadway
-   * @memberof OSjs.Core
+   * @memberof OSjs
    */
 
   var _connected = false;
@@ -341,7 +341,7 @@
 
   /**
    * @namespace Connection
-   * @memberof OSjs.Core.Broadway
+   * @memberof OSjs.Broadway
    */
   OSjs.Broadway.Connection = {
     init: init,

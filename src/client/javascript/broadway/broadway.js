@@ -36,7 +36,7 @@
    * and was made to fit with OS.js
    *
    * @namespace Broadway
-   * @memberof OSjs.Core
+   * @memberof OSjs
    */
 
   /////////////////////////////////////////////////////////////////////////////
@@ -951,7 +951,7 @@
      * @param {String}    url     Connection URL
      * @param {Option}    opts    Options
      *
-     * @function disconnect
+     * @function connect
      * @memberof OSjs.Broadway.GTK
      */
     connect: function(url, opts) {
@@ -1056,7 +1056,7 @@
      * @param {String}    cmd     Command name
      * @param {Array}     args    Command arguments
      *
-     * @function close
+     * @function send
      * @memberof OSjs.Broadway.GTK
      */
     send: function(cmd, args) {
@@ -1099,7 +1099,7 @@
 
   /**
    * @namespace GTK
-   * @memberof OSjs.Core.Broadway
+   * @memberof OSjs.Broadway
    */
   OSjs.Broadway.GTK = Broadway;
 
