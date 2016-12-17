@@ -256,6 +256,15 @@
       console.warn(e);
     }
 
+    var wm = OSjs.Core.getWindowManager();
+    if ( wm ) {
+      wm.getWindows().forEach(function(w) {
+        if ( w && w instanceof OSjs.Broadway.Window ) {
+          w.destroy();
+        }
+      });
+    }
+
     setTimeout(function() {
       updateNotification();
     }, 100);

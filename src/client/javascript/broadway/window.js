@@ -59,6 +59,7 @@
       width: w,
       height: h,
       title: 'Broadway Window ' + String(id),
+      tag: 'broadway',
       min_width: 100,
       min_height: 100,
       allow_resize: false,

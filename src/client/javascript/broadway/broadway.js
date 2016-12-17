@@ -964,7 +964,9 @@
 
       connectionOptions = opts || {};
 
-      OSjs.Broadway.Connection.disconnect();
+      if ( ws ) {
+        OSjs.Broadway.Connection.disconnect();
+      }
 
       ws = new WebSocket(url, 'broadway');
       ws.binaryType = 'arraybuffer';
