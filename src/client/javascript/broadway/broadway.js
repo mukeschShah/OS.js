@@ -120,7 +120,6 @@
   var keyDownList = [];
   var outstandingCommands = [];
   var inputSocket = null;
-  var connectionOptions = {};
   var grab = {
     window: null,
     ownerEvents: null,
@@ -700,9 +699,7 @@
           element.style.top = yOffset + 'px';
         }
       } else {
-        if ( connectionOptions.onMoveSurface ) {
-          connectionOptions.onMoveSurface(id, has_pos, has_size, surface);
-        }
+        OSjs.Broadway.Events.onMoveSurface(id, has_pos, has_size, surface);
       }
     }
 
@@ -722,9 +719,7 @@
           surface.canvas.parentNode.removeChild(surface.canvas);
         }
       } else {
-        if ( connectionOptions.onDeleteSurface ) {
-          connectionOptions.onDeleteSurface(id);
-        }
+        OSjs.Broadway.Events.onDeleteSurface(id);
       }
       delete surfaces[id];
     }
@@ -741,8 +736,10 @@
       console.debug('Broadway', 'onSetTransient()', id, parentId, surface);
 
       surface.transientParent = parentId;
-      if ( connectionOptions.onSetTransient ) {
-        connectionOptions.onSetTransient(id, parentId, surface);
+
+      var parentSurface = surfaces[parentId];
+      if ( surface.positioned ) {
+        parentSurface.canvas.parentNode.appendChild(surface.canvas);
       }
     }
   }
@@ -760,9 +757,7 @@
       }
 
       console.debug('Broadway', 'onHideSurface()', id);
-      if ( connectionOptions.onHideSurface ) {
-        connectionOptions.onHideSurface(id);
-      }
+      OSjs.Broadway.Events.onHideSurface(id);
     }
   }
 
@@ -776,9 +771,7 @@
       }
 
       console.debug('Broadway', 'onShowSurface()', id);
-      if ( connectionOptions.onShowSurface ) {
-        connectionOptions.onShowSurface(id);
-      }
+      OSjs.Broadway.Events.onShowSurface(id);
     }
   }
 
@@ -790,161 +783,239 @@
     surface.imageData = null;
     surfaces[id] = surface;
 
-    sendConfigureNotify(surface);
     console.debug('Broadway', 'onCreateSurface()', id, x, y, width, height, isTemp);
 
+    surface.canvas = document.createElement('canvas');
+    surface.canvas.width = width;
+    surface.canvas.height = height;
+    surface.canvas.setAttribute('data-surface-id', String(id));
+
     if ( isTemp ) {
-      surface.canvas = document.createElement('canvas');
-      surface.canvas.width = width;
-      surface.canvas.height = height;
       surface.canvas.style.position = 'absolute';
       surface.canvas.style.left = x + 'px';
       surface.canvas.style.top = y + 'px';
       surface.canvas.style.zIndex = '9999999';
       surface.canvas.style.display = 'none';
-      surface.canvas.setAttribute('data-surface-id', id.toString());
     } else {
-      if ( connectionOptions.onCreateSurface ) {
-        var canvas = connectionOptions.onCreateSurface(id, surface);
-        surface.canvas = canvas;
-      }
+      OSjs.Broadway.Events.onCreateSurface(id, surface);
     }
-  }
 
-  /////////////////////////////////////////////////////////////////////////////
-  // CONNECTION
-  /////////////////////////////////////////////////////////////////////////////
-
-  function handleCommands(cmd) {
-    /*
-    if ( !active ) {
-      start();
-      active = true;
-    }
-    */
-
-    while ( cmd.pos < cmd.length) {
-      var id, x, y, w, h;
-      var command = cmd.get_char();
-      lastSerial = cmd.get_32();
-
-      switch (command) {
-        case 'D':
-          inputSocket = null;
-          break;
-
-        case 's': // create new surface
-          id = cmd.get_16();
-          x = cmd.get_16s();
-          y = cmd.get_16s();
-          w = cmd.get_16();
-          h = cmd.get_16();
-          var isTemp = cmd.get_bool();
-          cmdCreateSurface(id, x, y, w, h, isTemp);
-          break;
-
-        case 'S': // Show a surface
-          id = cmd.get_16();
-          cmdShowSurface(id);
-          break;
-
-        case 'H': // Hide a surface
-          id = cmd.get_16();
-          cmdHideSurface(id);
-          break;
-
-        case 'p': // Set transient parent
-          id = cmd.get_16();
-          var parentId = cmd.get_16();
-          cmdSetTransientFor(id, parentId);
-          break;
-
-        case 'd': // Delete surface
-          id = cmd.get_16();
-          cmdDeleteSurface(id);
-          break;
-
-        case 'm': // Move a surface
-          id = cmd.get_16();
-          var ops = cmd.get_flags();
-          var has_pos = ops & 1;
-          if (has_pos) {
-            x = cmd.get_16s();
-            y = cmd.get_16s();
-          }
-          var has_size = ops & 2;
-          if (has_size) {
-            w = cmd.get_16();
-            h = cmd.get_16();
-          }
-          cmdMoveResizeSurface(id, has_pos, x, y, has_size, w, h);
-          break;
-
-        case 'r': // Raise a surface
-          id = cmd.get_16();
-          cmdRaiseSurface(id);
-          break;
-
-        case 'R': // Lower a surface
-          id = cmd.get_16();
-          cmdLowerSurface(id);
-          break;
-
-        case 'b': // Put image buffer
-          id = cmd.get_16();
-          w = cmd.get_16();
-          h = cmd.get_16();
-          var data = cmd.get_data();
-          cmdPutBuffer(id, w, h, data);
-          break;
-
-        case 'g': // Grab
-          id = cmd.get_16();
-          var ownerEvents = cmd.get_bool ();
-
-          cmdGrabPointer(id, ownerEvents);
-          break;
-
-        case 'u': // Ungrab
-          cmdUngrabPointer();
-          break;
-
-        /*
-        case 'k': // show keyboard
-          showKeyboard = cmd.get_16() !== 0;
-          showKeyboardChanged = true;
-          break;
-          */
-
-        default:
-          console.warn('Unknown op ' + command);
-      }
-    }
-    return true;
-  }
-
-  function handleOutstanding() {
-    while ( outstandingCommands.length > 0 ) {
-      var cmd = outstandingCommands.shift();
-      if ( !handleCommands(cmd) ) {
-        outstandingCommands.unshift(cmd);
-        return;
-      }
-    }
-  }
-
-  function handleMessage(message) {
-    var cmd = new BinCommands(message);
-    outstandingCommands.push(cmd);
-
-    if ( outstandingCommands.length === 1 ) {
-      handleOutstanding();
-    }
+    sendConfigureNotify(surface);
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // API
   /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * GTK Commands
+   */
+  var Commands = {
+    D: function() {
+      OSjs.Broadway.GTK.disconnect();
+    },
+
+    s: function(cmd) { // Create new surface
+      cmdCreateSurface(
+        cmd.get_16(), // id
+        cmd.get_16s(), // x
+        cmd.get_16s(), // y
+        cmd.get_16(), // w
+        cmd.get_16(), // h
+        cmd.get_bool() // tmp
+      );
+    },
+
+    S: function(cmd) { // Shows a surface
+      cmdShowSurface(cmd.get_16());
+    },
+
+    H: function(cmd) { // Hides a surface
+      cmdHideSurface(cmd.get_16());
+    },
+
+    p: function(cmd) { // Set transient parent
+      cmdSetTransientFor(cmd.get_16(), cmd.get_16());
+    },
+
+    d: function(cmd) { // Deletes a surface
+      cmdDeleteSurface(cmd.get_16());
+    },
+
+    m: function(cmd) { // Moves a surface
+      var x, y, w, h;
+
+      var id = cmd.get_16();
+      var ops = cmd.get_flags();
+      var has_pos = ops & 1;
+
+      if ( has_pos ) {
+        x = cmd.get_16s();
+        y = cmd.get_16s();
+      }
+
+      var has_size = ops & 2;
+      if ( has_size ) {
+        w = cmd.get_16();
+        h = cmd.get_16();
+      }
+
+      cmdMoveResizeSurface(id, has_pos, x, y, has_size, w, h);
+    },
+
+    r: function(cmd) { // Raises a surface
+      cmdRaiseSurface(cmd.get_16());
+    },
+
+    R: function(cmd) { // Lowers a surface
+      cmdLowerSurface(cmd.get_16());
+    },
+
+    b: function(cmd) { // Put image buffer
+      cmdPutBuffer(
+        cmd.get_16(), // id
+        cmd.get_16(), // w
+        cmd.get_16(), // h
+        cmd.get_data() // data
+      );
+    },
+
+    g: function(cmd) { // Grab
+      cmdGrabPointer(cmd.get_16(), cmd.get_bool());
+    },
+
+    u: function() { // Ungrab
+      cmdUngrabPointer();
+    }
+
+  };
+
+  /*
+   * Input injectors
+   */
+  var Input = {
+    mousewheel: function(id, cid, type, ev, opts) {
+      var offset = ev.detail ? ev.detail : -ev.wheelDelta;
+      var dir = offset > 0 ? 1 : 0;
+      sendInput('s', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, dir]);
+    },
+
+    mousedown: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+      var button = ev.button + 1;
+      lastState = lastState | getButtonMask(button);
+
+      if ( grab.window === null ) {
+        doGrab(id, false, true);
+      }
+
+      console.debug('Broadway', 'inject()', arguments);
+
+      sendInput('b', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+    },
+
+    mouseup: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+      var button = ev.button + 1;
+      lastState = lastState & ~getButtonMask (button);
+
+      sendInput('B', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
+
+      if ( grab.window !== null && grab.implicit ) {
+        doUngrab();
+      }
+    },
+
+    mouseover: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+
+      realWindowWithMouse = id;
+      windowWithMouse = id;
+
+      if ( windowWithMouse !== 0 ) {
+        sendInput('e', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+      }
+    },
+
+    mouseout: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+      if ( id !== 0 ) {
+        sendInput('l', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
+      }
+
+      realWindowWithMouse = 0;
+      windowWithMouse = 0;
+    },
+
+    mousemove: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+      sendInput('m', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState]);
+    },
+
+    keydown: function(id, cid, type, ev, opts) {
+      updateForEvent(ev);
+
+      var fev = copyKeyEvent(ev || window.event);
+      var keysym = getKeysymSpecial(ev);
+      var suppress = false;
+
+      fev.keysym = keysym;
+      if ( keysym ) {
+        if ( !ignoreKeyEvent(ev) ) {
+          sendInput('k', [keysym, lastState]);
+        }
+        suppress = true;
+      }
+
+      if ( !ignoreKeyEvent(ev) ) {
+        keyDownList.push(fev);
+      }
+
+      if ( suppress ) {
+        cancelEvent(ev);
+      }
+    },
+
+    keypress: function(id, cid, type, ev, opts) {
+      var kdlen = keyDownList.length
+
+      if (((typeof ev.which !== 'undefined') && (ev.which === 0)) || getKeysymSpecial(ev)) {
+        // Firefox and Opera generate a keyPress event even if keyDown
+        // is suppressed. But the keys we want to suppress will have
+        // either:
+        // - the which attribute set to 0
+        // - getKeysymSpecial() will identify it
+        cancelEvent(ev);
+        return;
+      }
+
+      var keysym = getKeysym(ev);
+
+      // Modify the which attribute in the depressed keys list so
+      // that the keyUp event will be able to have the character code
+      // translation available.
+      if (kdlen > 0) {
+        keyDownList[kdlen - 1].keysym = keysym;
+      }
+
+      // Send the translated keysym
+      if (keysym > 0) {
+        sendInput ('k', [keysym, lastState]);
+      }
+
+      // Stop keypress events just in case
+      cancelEvent(ev);
+    },
+
+    keyup: function(id, cid, type, ev, opts) {
+      var fev = getKeyEvent(ev.keyCode, true);
+      var keysym = fev ? fev.keysym : 0;
+      if ( keysym > 0 ) {
+        sendInput('K', [keysym, lastState]);
+      }
+      cancelEvent(ev);
+    }
+  };
 
   var Broadway = {
     /**
@@ -952,18 +1023,11 @@
      *
      * @param {String}    url     Connection URL
      * @param {Option}    opts    Options
-     * @param {Function}  cb      Callback on connect
-     * @param {Function}  cbclose Callback on close
      *
      * @function disconnect
      * @memberof OSjs.Broadway.GTK
      */
-    connect: function(url, opts, cb, cbclose) {
-      cb = cb || function() {};
-      cbclose = cbclose || function() {};
-
-      connectionOptions = opts || {};
-
+    connect: function(url, opts) {
       if ( ws ) {
         OSjs.Broadway.Connection.disconnect();
       }
@@ -973,24 +1037,45 @@
 
       ws.onopen = function() {
         inputSocket = ws;
-        cb(false);
 
-        if ( connectionOptions.onSocketOpen ) {
-          connectionOptions.onSocketOpen();
-        }
+        OSjs.Broadway.Events.onSocketOpen();
       };
 
       ws.onclose = function() {
         inputSocket = null;
-        cbclose();
 
-        if ( connectionOptions.onSocketClose ) {
-          connectionOptions.onSocketClose();
-        }
+        OSjs.Broadway.Events.onSocketClose();
       };
 
+      function handleCommands(cmd) {
+        while ( cmd.pos < cmd.length ) {
+          var command = cmd.get_char();
+          lastSerial = cmd.get_32();
+
+          if ( Commands[command] ) {
+            Commands[command](cmd);
+          } else {
+            console.warn('Unknown op ' + command);
+          }
+        }
+
+        return true;
+      }
+
       ws.onmessage = function(ev) {
-        handleMessage(ev.data);
+        var message = ev.data;
+        var cmd = new BinCommands(message);
+        outstandingCommands.push(cmd);
+
+        if ( outstandingCommands.length === 1 ) {
+          while ( outstandingCommands.length > 0 ) {
+            var cmd = outstandingCommands.shift();
+            if ( !handleCommands(cmd) ) {
+              outstandingCommands.unshift(cmd);
+              return;
+            }
+          }
+        }
       };
     },
 
@@ -1052,10 +1137,6 @@
      * @memberof OSjs.Broadway.GTK
      */
     inject: function(id, type, ev, opts) {
-      if ( ['mousemove'].indexOf(type) === -1 ) {
-        console.debug('Broadway', 'inject()', arguments);
-      }
-
       if ( type === 'resize' ) {
         var w = window.innerWidth;
         var h = window.innerHeight;
@@ -1066,131 +1147,8 @@
       var surface = surfaces[id];
       if ( surface ) {
         var cid = getLayer(ev, id);
-
-        switch (type) {
-          case 'mousewheel':
-            var offset = ev.detail ? ev.detail : -ev.wheelDelta;
-            var dir = offset > 0 ? 1 : 0;
-            sendInput('s', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, dir]);
-            break;
-
-          case 'mousedown':
-            updateForEvent(ev);
-            var button = ev.button + 1;
-            lastState = lastState | getButtonMask(button);
-
-            if ( grab.window === null ) {
-              doGrab(id, false, true);
-            }
-
-            sendInput('b', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
-            break;
-
-          case 'mouseup':
-            updateForEvent(ev);
-            var button = ev.button + 1;
-            lastState = lastState & ~getButtonMask (button);
-
-            sendInput('B', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
-
-            if ( grab.window !== null && grab.implicit ) {
-              doUngrab();
-            }
-
-            break;
-
-          case 'mouseover':
-            updateForEvent(ev);
-
-            realWindowWithMouse = id;
-            windowWithMouse = id;
-
-            if ( windowWithMouse !== 0 ) {
-              sendInput('e', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
-            }
-            break;
-
-          case 'mouseout':
-            updateForEvent(ev);
-            if ( id !== 0 ) {
-              sendInput('l', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
-            }
-
-            realWindowWithMouse = 0;
-            windowWithMouse = 0;
-            break;
-
-          case 'mousemove':
-            updateForEvent(ev);
-            sendInput('m', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState]);
-            break;
-
-          case 'keydown':
-            updateForEvent(ev);
-
-            var fev = copyKeyEvent(ev || window.event);
-            var keysym = getKeysymSpecial(ev);
-            var suppress = false;
-
-            fev.keysym = keysym;
-            if ( keysym ) {
-              if ( !ignoreKeyEvent(ev) ) {
-                sendInput('k', [keysym, lastState]);
-              }
-              suppress = true;
-            }
-
-            if ( !ignoreKeyEvent(ev) ) {
-              keyDownList.push(fev);
-            }
-
-            if ( suppress ) {
-              cancelEvent(ev);
-            }
-
-            break;
-
-          case 'keypress':
-            var kdlen = keyDownList.length
-
-            if (((typeof ev.which !== 'undefined') && (ev.which === 0)) || getKeysymSpecial(ev)) {
-              // Firefox and Opera generate a keyPress event even if keyDown
-              // is suppressed. But the keys we want to suppress will have
-              // either:
-              // - the which attribute set to 0
-              // - getKeysymSpecial() will identify it
-              cancelEvent(ev);
-              return;
-            }
-
-            keysym = getKeysym(ev);
-
-            // Modify the which attribute in the depressed keys list so
-            // that the keyUp event will be able to have the character code
-            // translation available.
-            if (kdlen > 0) {
-              keyDownList[kdlen - 1].keysym = keysym;
-            }
-
-            // Send the translated keysym
-            if (keysym > 0) {
-              sendInput ('k', [keysym, lastState]);
-            }
-
-            // Stop keypress events just in case
-            cancelEvent(ev);
-            break;
-
-          case 'keyup':
-            var fev = getKeyEvent(ev.keyCode, true);
-            var keysym = fev ? fev.keysym : 0;
-            if ( keysym > 0 ) {
-              sendInput('K', [keysym, lastState]);
-            }
-            cancelEvent(ev);
-
-            break;
-
+        if ( Input[type] ) {
+          Input[type](id, cid, type, ev, opts);
         }
       }
     }

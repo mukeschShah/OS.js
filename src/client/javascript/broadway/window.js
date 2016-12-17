@@ -48,18 +48,18 @@
    * @param {Number}  y       Y Position
    * @param {Number}  w       Width
    * @param {Number}  h       Height
+   * @param {Node}    canvas  Canvas DOM Node
    *
    * @abstract
    * @constructor
    * @memberof OSjs.Broadway
    * @extends OSjs.Core.Window
    */
-  function BroadwayWindow(id, x, y, w, h) {
+  function BroadwayWindow(id, x, y, w, h, canvas) {
     Window.apply(this, ['BroadwayWindow' + String(id), {
       width: w,
       height: h,
       title: 'Broadway Window ' + String(id),
-      tag: 'broadway',
       min_width: 100,
       min_height: 100,
       allow_resize: false,
@@ -70,7 +70,7 @@
     }]);
 
     this._broadwayId = id;
-    this._canvas = document.createElement('canvas');
+    this._canvas = canvas;
   };
 
   BroadwayWindow.prototype = Object.create(Window.prototype);
@@ -78,6 +78,7 @@
   BroadwayWindow.prototype.init = function() {
     var self = this;
     var root = Window.prototype.init.apply(this, arguments);
+
     this._canvas.width = this._dimension.w;
     this._canvas.height = this._dimension.h;
 

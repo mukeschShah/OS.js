@@ -84,9 +84,7 @@
     if ( wm ) {
       var n = wm.getNotificationIcon('BroadwayService');
       if ( n ) {
-        var icon = _connected ? 'network-transmit' : 'network-offline';
-        var image = API.getIcon('status/' + icon + '.png');
-        n.setIcon(image);
+        n.$image.style.opacity = _connected ? 1 : .4;
       }
     }
   }
@@ -135,7 +133,7 @@
       removeNotification();
 
       wm.createNotificationIcon('BroadwayService', {
-        image: API.getIcon('status/network-offline.png'),
+        image: API.getIcon('gtk.png'),
         onContextMenu: function(ev) {
           displayMenu(ev);
           return false;
@@ -145,6 +143,8 @@
           return false;
         }
       });
+
+      updateNotification();
     }
   }
 
@@ -152,65 +152,6 @@
    * Creates a new Broadway connection
    */
   function createConnection(host, cb, cbclose) {
-    OSjs.Broadway.GTK.connect(host, {
-      onSocketOpen: cb,
-      onSocketClose: cbclose,
-
-      onSetTransient: function(id, parentId, surface) {
-        return actionOnWindow(parentId, function(win) {
-          if ( win._canvas && surface.canvas ) {
-            if ( win._canvas.parentNode ) {
-              win._canvas.parentNode.appendChild(surface.canvas);
-            }
-          }
-        });
-      },
-
-      /*
-      onFlushSurface: function(id, q) {
-        return actionOnWindow(id, function(win) {
-          return win._canvas;
-        });
-      },
-      */
-
-      onDeleteSurface: function(id) {
-        return actionOnWindow(id, function(win) {
-          return win._close();
-        });
-      },
-
-      onShowSurface: function(id) {
-        return actionOnWindow(id, function(win) {
-          return win._restore();
-        });
-      },
-
-      onHideSurface: function(id) {
-        return actionOnWindow(id, function(win) {
-          return win._minimize();
-        });
-      },
-
-      onMoveSurface: function(id, has_pos, has_size, surface) {
-        return actionOnWindow(id, function(win) {
-          //if ( has_pos ) {
-          //  win._move(x, y);
-          //}
-          if ( has_size ) {
-            win._resize(surface.width, surface.height);
-          }
-        });
-      },
-
-      onCreateSurface: function(id, surface) {
-        var wm = OSjs.Core.getWindowManager();
-        var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height);
-        wm.addWindow(win);
-        return win._canvas;
-      }
-
-    }, cb, cbclose);
   }
 
   /*
@@ -235,6 +176,16 @@
   /////////////////////////////////////////////////////////////////////////////
   // API
   /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Initializes Broadway
+   *
+   * @function init
+   * @memberof OSjs.Broadway.Connection
+   */
+  function init() {
+    createNotification();
+  }
 
   /**
    * Disconnects the Broadway connections
@@ -290,11 +241,8 @@
         console.error(err);
       } else {
         try {
-          createConnection(createURL(conf.defaults.connection), function() {
-            updateNotification();
-          }, function() {
-            disconnect();
-          });
+          var host = createURL(conf.defaults.connection);
+          OSjs.Broadway.GTK.connect(host);
         } catch ( e ) {
           console.warn(e);
         }
@@ -325,21 +273,57 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  if ( API.getConfig('Broadway.enabled') ) {
-    API.addHook('onSessionLoaded', function() {
-      createNotification();
-    });
+  OSjs.Broadway.Events = {
+    onSocketOpen: function() {
+      updateNotification();
+    },
 
-    API.addHook('onLogout', function() {
-      OSjs.Broadway.Connection.disconnect();
-    });
-  }
+    onSocketClose: function() {
+      disconnect();
+    },
+
+    onDeleteSurface: function(id) {
+      return actionOnWindow(id, function(win) {
+        return win._close();
+      });
+    },
+
+    onShowSurface: function(id) {
+      return actionOnWindow(id, function(win) {
+        return win._restore();
+      });
+    },
+
+    onHideSurface: function(id) {
+      return actionOnWindow(id, function(win) {
+        return win._minimize();
+      });
+    },
+
+    onMoveSurface: function(id, has_pos, has_size, surface) {
+      return actionOnWindow(id, function(win) {
+        //if ( has_pos ) {
+        //  win._move(x, y);
+        //}
+        if ( has_size ) {
+          win._resize(surface.width, surface.height);
+        }
+      });
+    },
+
+    onCreateSurface: function(id, surface) {
+      var wm = OSjs.Core.getWindowManager();
+      var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height, surface.canvas);
+      wm.addWindow(win, true);
+    }
+  };
 
   /**
    * @namespace Connection
    * @memberof OSjs.Core.Broadway
    */
   OSjs.Broadway.Connection = {
+    init: init,
     connect: connect,
     disconnect: disconnect,
     spawn: spawn

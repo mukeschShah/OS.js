@@ -447,6 +447,16 @@
       return;
     }
 
+    if ( OSjs.API.getConfig('Broadway.enabled') ) {
+      OSjs.API.addHook('onSessionLoaded', function() {
+        OSjs.Broadway.Connection.init();
+      });
+
+      OSjs.API.addHook('onLogout', function() {
+        OSjs.Broadway.Connection.disconnect();
+      });
+    }
+
     var exts = Object.keys(OSjs.Extensions);
     var manifest =  OSjs.Core.getMetadata();
 
