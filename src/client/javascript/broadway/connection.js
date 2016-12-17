@@ -179,9 +179,12 @@
 
       if ( wm ) {
         var space = wm.getWindowSpace();
+        var theme = wm ? wm.getStyleTheme(true) : null;
+        var topMargin = theme ? (theme.style.window.margin) : 26;
+
         OSjs.Broadway.GTK.inject(null, 'resize', null, {
           width: space.width,
-          height: space.height
+          height: space.height - topMargin
         });
       }
 
@@ -324,9 +327,11 @@
       return actionOnWindow(id, function(win) {
         var wm = OSjs.Core.getWindowManager();
         var space = wm.getWindowSpace();
+
         if ( has_pos ) {
           win._move(space.left + surface.x, space.top + surface.y);
         }
+
         if ( has_size ) {
           win._resize(surface.width, surface.height);
         }
