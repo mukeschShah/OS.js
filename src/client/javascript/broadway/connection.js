@@ -49,6 +49,9 @@
   function createURL(cfg) {
     var protocol = cfg.protocol || window.location.protocol.replace(/^http/, 'ws');
     var host = cfg.host || window.location.hostname;
+    if ( host === 'localhost' && host !== window.location.hostname ) {
+      host = window.location.hostname;
+    }
     return protocol + '//' + host + ':' + cfg.port + '/' + cfg.uri;
   }
 
