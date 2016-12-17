@@ -58,7 +58,7 @@
   function actionOnWindow(id, cb) {
     var wm = OSjs.Core.getWindowManager();
     if ( wm ) {
-      var win = wm.getWindow('BroadwayWindow' + id);
+      var win = wm.getWindow('BroadwayWindow' + String(id));
       if ( win ) {
         return cb(win);
       }
@@ -146,12 +146,6 @@
 
       updateNotification();
     }
-  }
-
-  /*
-   * Creates a new Broadway connection
-   */
-  function createConnection(host, cb, cbclose) {
   }
 
   /*
@@ -311,10 +305,12 @@
       });
     },
 
-    onCreateSurface: function(id, surface) {
+    onCreateSurface: function(id, surface, isTemp) {
       var wm = OSjs.Core.getWindowManager();
-      var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height, surface.canvas);
-      wm.addWindow(win, true);
+      if ( !isTemp ) {
+        var win = new OSjs.Broadway.Window(id, surface.x, surface.y, surface.width, surface.height, surface.canvas);
+        wm.addWindow(win, true);
+      }
     }
   };
 

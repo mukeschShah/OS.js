@@ -44,8 +44,8 @@
   /////////////////////////////////////////////////////////////////////////////
 
   var GDK_CROSSING_NORMAL = 0;
-  var GDK_CROSSING_GRAB = 1;
-  var GDK_CROSSING_UNGRAB = 2;
+  //var GDK_CROSSING_GRAB = 1;
+  //var GDK_CROSSING_UNGRAB = 2;
 
   // GdkModifierType
   var GDK_SHIFT_MASK = 1 << 0;
@@ -108,23 +108,13 @@
   // GLOBALS
   /////////////////////////////////////////////////////////////////////////////
 
-  var ws;
+  var ws = null;
   var lastSerial = 0;
-  var lastX = 0;
-  var lastY = 0;
   var lastState;
   var lastTimeStamp = 0;
-  var realWindowWithMouse = 0;
-  var windowWithMouse = 0;
   var surfaces = {};
   var keyDownList = [];
   var outstandingCommands = [];
-  var inputSocket = null;
-  var grab = {
-    window: null,
-    ownerEvents: null,
-    implicit: false
-  };
 
   /////////////////////////////////////////////////////////////////////////////
   // CLASSES
@@ -335,22 +325,6 @@
     return imageData;
   }
 
-  function getPositionsFromAbsCoord(absX, absY, relativeId) {
-    var res = Object();
-
-    res.rootX = absX;
-    res.rootY = absY;
-    res.winX = absX;
-    res.winY = absY;
-    if (relativeId !== 0) {
-      var surface = surfaces[relativeId];
-      res.winX = res.winX - surface.x;
-      res.winY = res.winY - surface.y;
-    }
-
-    return res;
-  }
-
   function getLayer(ev, id) {
     var cid = id;
     if ( ev.target ) {
@@ -367,7 +341,7 @@
   /////////////////////////////////////////////////////////////////////////////
 
   function sendInput(cmd, args) {
-    if ( inputSocket === null ) {
+    if ( ws === null ) {
       return;
     }
 
@@ -378,41 +352,7 @@
       view.setInt32(i * 4, arg, false);
     });
 
-    inputSocket.send(buffer);
-  }
-
-  function doGrab(id, ownerEvents, implicit) {
-    var pos;
-
-    if (windowWithMouse !== id) {
-      if (windowWithMouse !== 0) {
-        pos = getPositionsFromAbsCoord(lastX, lastY, windowWithMouse);
-        sendInput ('l', [realWindowWithMouse, windowWithMouse, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState, GDK_CROSSING_GRAB]);
-      }
-      pos = getPositionsFromAbsCoord(lastX, lastY, id);
-      sendInput ('e', [realWindowWithMouse, id, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState, GDK_CROSSING_GRAB]);
-      windowWithMouse = id;
-    }
-
-    grab.window = id;
-    grab.ownerEvents = ownerEvents;
-    grab.implicit = implicit;
-  }
-
-  function doUngrab() {
-    var pos;
-    if (realWindowWithMouse !== windowWithMouse) {
-      if (windowWithMouse !== 0) {
-        pos = getPositionsFromAbsCoord(lastX, lastY, windowWithMouse);
-        sendInput('l', [realWindowWithMouse, windowWithMouse, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState, GDK_CROSSING_UNGRAB]);
-      }
-      if (realWindowWithMouse !== 0) {
-        pos = getPositionsFromAbsCoord(lastX, lastY, realWindowWithMouse);
-        sendInput('e', [realWindowWithMouse, realWindowWithMouse, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState, GDK_CROSSING_UNGRAB]);
-      }
-      windowWithMouse = realWindowWithMouse;
-    }
-    grab.window = null;
+    ws.send(buffer);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -631,15 +571,11 @@
   /////////////////////////////////////////////////////////////////////////////
 
   function cmdGrabPointer(id, ownerEvents) {
-    doGrab(id, ownerEvents, false);
     sendInput ('g', []);
   }
 
   function cmdUngrabPointer() {
     sendInput ('u', []);
-    if ( grab.window ) {
-      doUngrab();
-    }
   }
 
   function cmdPutBuffer(id, w, h, compressed) {
@@ -708,19 +644,15 @@
 
   function cmdDeleteSurface(id) {
     var surface = surfaces[id];
-    if ( grab.window === id ) {
-      doUngrab();
-    }
 
     if ( surface ) {
       console.debug('Broadway', 'onDeleteSurface()', id);
-      if ( surface.canvas && surface.positioned ) {
-        if ( surface.canvas.parentNode ) {
-          surface.canvas.parentNode.removeChild(surface.canvas);
-        }
-      } else {
-        OSjs.Broadway.Events.onDeleteSurface(id);
+      if ( surface.canvas.parentNode ) {
+        surface.canvas.parentNode.removeChild(surface.canvas);
       }
+
+      OSjs.Broadway.Events.onDeleteSurface(id);
+
       delete surfaces[id];
     }
   }
@@ -739,16 +671,17 @@
 
       var parentSurface = surfaces[parentId];
       if ( surface.positioned ) {
+        console.warn();
+        var pos = Utils.$position(parentSurface.canvas);
+        surface.canvas.style.marginTop = -(pos.top) + 'px';
+        surface.canvas.style.marginLeft = -(pos.left) + 'px';
+
         parentSurface.canvas.parentNode.appendChild(surface.canvas);
       }
     }
   }
 
   function cmdHideSurface(id) {
-    if ( grab.window === id ) {
-      doUngrab();
-    }
-
     var surface = surfaces[id];
     if ( surface ) {
       surface.visible = false;
@@ -776,16 +709,22 @@
   }
 
   function cmdCreateSurface(id, x, y, width, height, isTemp) {
-    var surface = {id: id, x: x, y:y, width: width, height: height, isTemp: isTemp};
-    surface.positioned = isTemp;
-    surface.transientParent = 0;
-    surface.visible = false;
-    surface.imageData = null;
-    surfaces[id] = surface;
+    var surface = {
+      id: id,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      positioned: isTemp,
+      transientParent: 0,
+      visible: false,
+      imageData: null,
+      canvas: document.createElement('canvas'),
+      isTemp: isTemp
+    };
 
-    console.debug('Broadway', 'onCreateSurface()', id, x, y, width, height, isTemp);
+    console.debug('Broadway', 'onCreateSurface()', surface);
 
-    surface.canvas = document.createElement('canvas');
     surface.canvas.width = width;
     surface.canvas.height = height;
     surface.canvas.setAttribute('data-surface-id', String(id));
@@ -796,20 +735,18 @@
       surface.canvas.style.top = y + 'px';
       surface.canvas.style.zIndex = '9999999';
       surface.canvas.style.display = 'none';
-    } else {
-      OSjs.Broadway.Events.onCreateSurface(id, surface);
     }
 
+    OSjs.Broadway.Events.onCreateSurface(id, surface, isTemp);
+
+    surfaces[id] = surface;
     sendConfigureNotify(surface);
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  // API
+  // COMMAND HANDLERS
   /////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * GTK Commands
-   */
   var Commands = {
     D: function() {
       OSjs.Broadway.GTK.disconnect();
@@ -887,12 +824,12 @@
     u: function() { // Ungrab
       cmdUngrabPointer();
     }
-
   };
 
-  /*
-   * Input injectors
-   */
+  /////////////////////////////////////////////////////////////////////////////
+  // INPUT INJECTORS
+  /////////////////////////////////////////////////////////////////////////////
+
   var Input = {
     mousewheel: function(id, cid, type, ev, opts) {
       var offset = ev.detail ? ev.detail : -ev.wheelDelta;
@@ -905,10 +842,6 @@
       var button = ev.button + 1;
       lastState = lastState | getButtonMask(button);
 
-      if ( grab.window === null ) {
-        doGrab(id, false, true);
-      }
-
       console.debug('Broadway', 'inject()', arguments);
 
       sendInput('b', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
@@ -920,19 +853,12 @@
       lastState = lastState & ~getButtonMask (button);
 
       sendInput('B', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, button]);
-
-      if ( grab.window !== null && grab.implicit ) {
-        doUngrab();
-      }
     },
 
     mouseover: function(id, cid, type, ev, opts) {
       updateForEvent(ev);
 
-      realWindowWithMouse = id;
-      windowWithMouse = id;
-
-      if ( windowWithMouse !== 0 ) {
+      if ( id !== 0 ) {
         sendInput('e', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
       }
     },
@@ -942,9 +868,6 @@
       if ( id !== 0 ) {
         sendInput('l', [id, cid, ev.pageX, ev.pageY, opts.mx, opts.my, lastState, GDK_CROSSING_NORMAL]);
       }
-
-      realWindowWithMouse = 0;
-      windowWithMouse = 0;
     },
 
     mousemove: function(id, cid, type, ev, opts) {
@@ -1017,6 +940,10 @@
     }
   };
 
+  /////////////////////////////////////////////////////////////////////////////
+  // API
+  /////////////////////////////////////////////////////////////////////////////
+
   var Broadway = {
     /**
      * Connects to a Broadway server
@@ -1036,13 +963,11 @@
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = function() {
-        inputSocket = ws;
-
         OSjs.Broadway.Events.onSocketOpen();
       };
 
       ws.onclose = function() {
-        inputSocket = null;
+        ws = null;
 
         OSjs.Broadway.Events.onSocketClose();
       };
