@@ -13,6 +13,11 @@
 [![Donate](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=andersevenrud%40gmail%2ecom&lc=NO&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted)
 [![Support](https://img.shields.io/badge/patreon-support-orange.svg)](https://www.patreon.com/user?u=2978551&ty=h&u=2978551)
 
+
+## this fork
+purpose of this fork is, build an static dist with something like a  firebase backend
+
+
 ## Try it yourself
 
 Visit the [official demo](https://osjsv2.0o.no) for a preview version. Please note that some features are disabled and might be outdated or unavailable at times.
